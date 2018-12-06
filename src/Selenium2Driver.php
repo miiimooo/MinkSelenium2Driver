@@ -652,17 +652,7 @@ JS;
                 return;
             }
         }
-
-        $value = strval($value);
-
-        if (in_array($elementName, array('input', 'textarea'))) {
-            $existingValueLength = strlen($element->attribute('value'));
-            // Add the TAB key to ensure we unfocus the field as browsers are triggering the change event only
-            // after leaving the field.
-            $value = str_repeat(Key::BACKSPACE . Key::DELETE, $existingValueLength) . $value . Key::TAB;
-        }
-
-        $element->postValue(array('value' => array($value)));
+        $this->postElementValue($value, $elementName, $element);
     }
 
     /**
@@ -693,6 +683,25 @@ JS;
         }
 
         $this->clickOnElement($element);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function sendKeys($xpath, $value)
+    {
+        $element = $this->findElement($xpath);
+        $elementName = strtolower($element->name());
+
+        if ('input' === $elementName) {
+            $elementType = strtolower($element->attribute('type'));
+
+            if (in_array($elementType, array('submit', 'image', 'button', 'reset', 'checkbox', 'radio', 'file'))) {
+                throw new DriverException(sprintf('Impossible to send keys on element with XPath "%s" as it is not a textbox', $xpath));
+            }
+        }
+
+        $this->postElementValue($value, $elementName, $element);
     }
 
     /**
@@ -1094,4 +1103,22 @@ JS;
             throw new DriverException(sprintf($message, $action, $xpath, $type));
         }
     }
+
+    /**
+     * @param $value
+     * @param $elementName
+     * @param $element
+    */
+    private function postElementValue($value, $elementName, $element)
+    {
+        $value = strval($value);
+
+        if (in_array($elementName, array('input', 'textarea'))) {
+            $existingValueLength = strlen($element->attribute('value'));
+            $value = str_repeat(Key::BACKSPACE . Key::DELETE, $existingValueLength) . $value;
+        }
+
+        $element->postValue(array('value' => array($value)));
+    }
+
 }
